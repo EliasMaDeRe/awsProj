@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
 
 alumnos = []
 profesores = []
@@ -23,9 +21,9 @@ def post_alumno():
     data = request.get_json()
     alumno = {
         "id": data["id"],
-        "nombres": data["nombres"],
-        "apellidos": data["apellidos"],
-        "promedio": data["promedio"]
+        "nombres": data.get("nombres"),
+        "apellidos": data.get("apellidos"),
+        "promedio": data.get("promedio")
     }
     alumnos.append(alumno)
     return jsonify(alumno), 201
@@ -64,10 +62,10 @@ def post_profesor():
     data = request.get_json()
     profesor = {
         "id": data["id"],
-        "nombres": data["nombres"],
-        "apellidos": data["apellidos"],
-        "numeroEmpleado": data["numeroEmpleado"],
-        "horasClase": data["horasClase"]
+        "nombres": data.get("nombres"),
+        "apellidos": data.get("apellidos"),
+        "numeroEmpleado": data.get("numeroEmpleado"),
+        "horasClase": data.get("horasClase")
     }
     profesores.append(profesor)
     return jsonify(profesor), 201
