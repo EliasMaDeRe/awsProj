@@ -89,4 +89,5 @@ def delete_profesor(profesor_id):
     return jsonify({"error": "Profesor no encontrado"}), 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=3000)
+
