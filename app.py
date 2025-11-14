@@ -21,7 +21,12 @@ def validate_alumno(data):
     
     required_text_fields = ["nombres", "apellidos", "matricula"]
     for field in required_text_fields:
-        if field not in data or not isinstance(data.get(field), str) or not data[field].strip():
+        value = data.get(field)
+        if value is None:
+            return f"Campo '{field}' obligatorio o nulo."
+        if not isinstance(value, str):
+            return f"Campo '{field}' debe ser una cadena de texto."
+        if not value.strip():
             return f"Campo '{field}' obligatorio o vacío."
 
     promedio_val = data.get("promedio")
@@ -43,7 +48,12 @@ def validate_profesor(data):
 
     required_text_fields = ["nombres", "apellidos", "numeroEmpleado"]
     for field in required_text_fields:
-        if field not in data or not isinstance(data.get(field), str) or not data[field].strip():
+        value = data.get(field)
+        if value is None:
+            return f"Campo '{field}' obligatorio o nulo."
+        if not isinstance(value, str):
+            return f"Campo '{field}' debe ser una cadena de texto."
+        if not value.strip():
             return f"Campo '{field}' obligatorio o vacío."
 
     horas_clase_val = data.get("horasClase")
@@ -51,11 +61,12 @@ def validate_profesor(data):
         return "Campo 'horasClase' obligatorio."
     
     try:
-        horas_clase = int(horas_clase_val)
-        if horas_clase <= 0:
-            return "Campo 'horasClase' debe ser positivo."
+        horas_clase = float(horas_clase_val)
+        if horas_clase <= 0 or horas_clase != int(horas_clase):
+             return "Campo 'horasClase' debe ser un entero positivo."
+        horas_clase = int(horas_clase)
     except (ValueError, TypeError):
-        return "Campo 'horasClase' debe ser entero."
+        return "Campo 'horasClase' debe ser numérico."
 
     return None
 
@@ -209,6 +220,10 @@ def delete_profesor(id):
 def not_found_error(error):
     return jsonify({"error": "Ruta no encontrada."}), 404
 
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({"error": "Método no permitido."}), 405
+
 if __name__ == '__main__':
     print(f"[OK] Servidor Flask corriendo en http://0.0.0.0:{PORT}")
-    app.run(host='0.0.0.0', port=PORT)
+    app.run(host='0.0.0.0', port=PORT, debug=True)
