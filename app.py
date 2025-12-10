@@ -10,9 +10,9 @@ from botocore.exceptions import ClientError
 app = Flask(__name__)
 
 AWS_REGION = 'us-east-1'
-AWS_ACCESS_KEY = ''
+AWS_ACCESS_KEY = '' 
 AWS_SECRET_KEY = ''
-AWS_SESSION_TOKEN = ''
+AWS_SESSION_TOKEN = '' 
 
 DB_USER = 'admin'
 DB_PASS = ''
@@ -45,7 +45,7 @@ class Alumno(db.Model):
     matricula = db.Column(db.String(50), nullable=False)
     promedio = db.Column(db.Float, nullable=False)
     fotoPerfilUrl = db.Column(db.String(300), nullable=True)
-    password = db.Column(db.String(100), nullable=True)
+    password = db.Column(db.String(100), nullable=True) 
 
     def to_dict(self):
         return {
@@ -79,7 +79,10 @@ with app.app_context():
 
 def validate_common(data, fields):
     for field in fields:
-        if field not in data or str(data[field]).strip() == "":
+        value = data.get(field)
+        if value is None:
+            return False
+        if isinstance(value, str) and value.strip() == "":
             return False
     return True
 
@@ -98,15 +101,22 @@ def get_alumno(id):
 @app.route('/alumnos', methods=['POST'])
 def create_alumno():
     data = request.get_json()
-    if not validate_common(data, ["nombres", "apellidos", "matricula", "promedio"]):
-        return jsonify({"error": "Datos incompletos"}), 400
+    required_fields = ["nombres", "apellidos", "matricula", "promedio"]
     
+    if not validate_common(data, required_fields):
+        return jsonify({"error": "Datos incompletos o inválidos"}), 400
+    
+    try:
+        promedio_val = float(data['promedio'])
+    except (ValueError, TypeError):
+        return jsonify({"error": "El promedio debe ser un número"}), 400
+
     nuevo_alumno = Alumno(
         nombres=data['nombres'],
         apellidos=data['apellidos'],
         matricula=data['matricula'],
-        promedio=float(data['promedio']),
-        password=data.get('password', '123456')
+        promedio=promedio_val,
+        password=data.get('password', '123456') 
     )
     db.session.add(nuevo_alumno)
     db.session.commit()
@@ -119,10 +129,28 @@ def update_alumno(id):
         return jsonify({"error": "Alumno no encontrado"}), 404
     
     data = request.get_json()
-    if 'nombres' in data: alumno.nombres = data['nombres']
-    if 'apellidos' in data: alumno.apellidos = data['apellidos']
-    if 'matricula' in data: alumno.matricula = data['matricula']
-    if 'promedio' in data: alumno.promedio = float(data['promedio'])
+    
+    if 'nombres' in data: 
+        if data['nombres'] is None or (isinstance(data['nombres'], str) and data['nombres'].strip() == ""):
+             return jsonify({"error": "El nombre no puede ser nulo o vacío"}), 400
+        alumno.nombres = data['nombres']
+        
+    if 'apellidos' in data: 
+        if data['apellidos'] is None or (isinstance(data['apellidos'], str) and data['apellidos'].strip() == ""):
+             return jsonify({"error": "El apellido no puede ser nulo o vacío"}), 400
+        alumno.apellidos = data['apellidos']
+
+    if 'matricula' in data: 
+        if data['matricula'] is None or (isinstance(data['matricula'], str) and data['matricula'].strip() == ""):
+             return jsonify({"error": "La matricula no puede ser nula o vacía"}), 400
+        alumno.matricula = data['matricula']
+
+    if 'promedio' in data: 
+        try:
+            promedio_val = float(data['promedio'])
+            alumno.promedio = promedio_val
+        except (ValueError, TypeError):
+            return jsonify({"error": "El promedio debe ser un número válido"}), 400
     
     db.session.commit()
     return jsonify(alumno.to_dict()), 200
@@ -158,7 +186,7 @@ def upload_foto_perfil(id):
             file,
             S3_BUCKET_NAME,
             filename,
-            ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type}
+            ExtraArgs={'ACL': 'public-read', 'ContentType': file.content_type} 
         )
 
         url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{filename}"
@@ -166,9 +194,9 @@ def upload_foto_perfil(id):
         alumno.fotoPerfilUrl = url
         db.session.commit()
 
-        return jsonify({"mensaje": "Foto subida", "url": url}), 200
+        return jsonify({"mensaje": "Foto subida", "url": url, "fotoPerfilUrl": url}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error al subir a S3: {str(e)}"}), 500
 
 @app.route('/alumnos/<int:id>/email', methods=['POST'])
 def send_email_sns(id):
@@ -190,7 +218,7 @@ def send_email_sns(id):
         )
         return jsonify({"mensaje": "Correo enviado vía SNS", "messageId": response['MessageId']}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error al enviar SNS: {str(e)}"}), 500
 
 @app.route('/alumnos/<int:id>/session/login', methods=['POST'])
 def login(id):
@@ -208,10 +236,10 @@ def login(id):
     
     session_id = str(uuid.uuid4())
     fecha = int(time.time())
-    session_string = secrets.token_hex(64)
+    session_string = secrets.token_hex(64) 
 
     item = {
-        'id': {'S': session_id},
+        'id': {'S': session_id}, 
         'fecha': {'N': str(fecha)},
         'alumnoId': {'N': str(id)},
         'active': {'BOOL': True},
@@ -225,7 +253,7 @@ def login(id):
             "sessionString": session_string
         }), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error en login DynamoDB: {str(e)}"}), 500
 
 @app.route('/alumnos/<int:id>/session/verify', methods=['POST'])
 def verify_session(id):
@@ -258,10 +286,10 @@ def verify_session(id):
         if is_active:
             return jsonify({"mensaje": "Sesión válida", "active": True}), 200
         else:
-            return jsonify({"error": "Sesión inactiva"}), 400
+            return jsonify({"error": "Sesión inactiva"}), 400 
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error al verificar sesión DynamoDB: {str(e)}"}), 500
 
 @app.route('/alumnos/<int:id>/session/logout', methods=['POST'])
 def logout(id):
@@ -298,7 +326,7 @@ def logout(id):
         return jsonify({"mensaje": "Logout exitoso"}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error en logout DynamoDB: {str(e)}"}), 500
 
 @app.route('/profesores', methods=['GET'])
 def get_profesores():
@@ -314,14 +342,24 @@ def get_profesor(id):
 @app.route('/profesores', methods=['POST'])
 def create_profesor():
     data = request.get_json()
-    if not validate_common(data, ["numeroEmpleado", "nombres", "apellidos", "horasClase"]):
-        return jsonify({"error": "Datos incompletos"}), 400
+    required_fields = ["numeroEmpleado", "nombres", "apellidos", "horasClase"]
+
+    if not validate_common(data, required_fields):
+        return jsonify({"error": "Datos incompletos o inválidos"}), 400
+    
+    try:
+        horasClase_val = int(data['horasClase'])
+        if isinstance(data['horasClase'], float) and data['horasClase'] % 1 != 0:
+            return jsonify({"error": "Las horas clase deben ser un número entero"}), 400
+
+    except (ValueError, TypeError):
+        return jsonify({"error": "Las horas clase deben ser un número entero"}), 400
     
     nuevo_profesor = Profesor(
         numeroEmpleado=data['numeroEmpleado'],
         nombres=data['nombres'],
         apellidos=data['apellidos'],
-        horasClase=int(data['horasClase'])
+        horasClase=horasClase_val
     )
     db.session.add(nuevo_profesor)
     db.session.commit()
@@ -333,8 +371,23 @@ def update_profesor(id):
     if not profesor: return jsonify({"error": "Profesor no encontrado"}), 404
     
     data = request.get_json()
-    if 'nombres' in data: profesor.nombres = data['nombres']
-    if 'horasClase' in data: profesor.horasClase = int(data['horasClase'])
+    
+    for field in ['nombres', 'apellidos', 'numeroEmpleado']:
+        if field in data:
+            if data[field] is None or (isinstance(data[field], str) and data[field].strip() == ""):
+                return jsonify({"error": f"El campo {field} no puede ser nulo o vacío"}), 400
+            setattr(profesor, field, data[field])
+    
+    if 'horasClase' in data: 
+        try:
+            horasClase_val = int(data['horasClase'])
+            if isinstance(data['horasClase'], float) and data['horasClase'] % 1 != 0:
+                return jsonify({"error": "Las horas clase deben ser un número entero válido"}), 400
+            
+            profesor.horasClase = horasClase_val
+
+        except (ValueError, TypeError):
+            return jsonify({"error": "Las horas clase deben ser un número entero válido"}), 400
     
     db.session.commit()
     return jsonify(profesor.to_dict()), 200
